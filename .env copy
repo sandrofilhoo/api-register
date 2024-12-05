@@ -1,0 +1,5 @@
+PORT=9999
+CLIENT_URL=http://localhost:5137
+USER: ,
+PASSWORD: ,
+DATABASE: 
