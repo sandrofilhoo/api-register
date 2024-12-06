@@ -3,24 +3,42 @@ import { Request, Response } from "express"
 
 export const getUsers = async ({ query }: Request, res: Response) => {
     try {
-      const queryParams = query || {}; // Garante que `query` esteja definido
+      const queryParams = query || {}; 
       const limit = queryParams.limit
         ? (Number(queryParams.limit) === -1 ? Number.MAX_SAFE_INTEGER : Number(queryParams.limit))
         : 10;
       const offset = queryParams.offset ? Number(queryParams.offset) : 0;
       const users = await db("users")
-        .where((builder) => {
-            if(query.search){
-                builder.where('id', query.search)
-                .orWhere('nome', "like" ,` %${query.search}%`)
-                .orWhere('email', "like" , `%${query.search}%`)
-                .orWhere('data_de_nascimento', query.search)
-            }
-        })
-        .limit(limit)
-        .offset(offset);
+      .where((builder) => {
+        if (query.search) {
+          if (!isNaN(query.search)) {
+            builder.where("id", query.search);
+          }
+
+          builder
+            .orWhere("name", "like", `%${query.search}%`)
+            .orWhere("email", "like", `%${query.search}%`);
+        }
+      })
+      .orderBy('id','desc')
+      .limit(limit)
+      .offset(offset);
+
+      const [{count}] = await db("users")
+      .where((builder) => {
+        if (query.search) {
+          if (!isNaN(query.search)) {
+            builder.where("id", query.search);
+          }
+
+          builder
+            .orWhere("name", "like", `%${query.search}%`)
+            .orWhere("email", "like", `%${query.search}%`);
+        }
+      })
+      .count('*');
   
-      return res.json({ users, message: "USERS_FETCHED", code: 200 });
+      return res.json({ users,total: count, message: "USERS_FETCHED", code: 200 });
     } catch (error) {
       console.error("Error fetching users:", error);
       return res.status(500).json({ message: "INTERNAL_SERVER_ERROR", code: 500 });
@@ -30,7 +48,7 @@ export const getUsers = async ({ query }: Request, res: Response) => {
 
 export const findUser = async ({ params }: Request, res: Response) => {
     const { id } = params;
-    const user = await db("users").where('id',id).select("*");
+    const user = await db("users").where('id',id).first();
 
 	return res.json({user, message: "FIND_USER_SUCCESS", code: 200 })
 }
@@ -42,10 +60,9 @@ export const createUser = async ({ body }: Request, res: Response) => {
         return res.status(400).json({ message: "INVALID_USER_DATA", code: 400 });
     }
     try {
-        // Inicia a transação
         const newUser = await db.transaction(async (trx) => {
             const [createdUser] = await trx("users").insert(data).returning("*"); // Insere o usuário e retorna o registro criado
-            return createdUser; // Retorna o usuário criado
+            return createdUser;
         });
     
         return res.status(201).json({ user: newUser, message: "USER_CREATED", code: 201 });
@@ -56,16 +73,14 @@ export const createUser = async ({ body }: Request, res: Response) => {
 }
 export const updateUser = async ({ params, body }: Request, res: Response) => {
     const { id } = params;
-    const { data } = body;
+    const data = body;
 
     try {
-    // Inicia uma transação
     const updatedUser = await db.transaction(async (trx) => {
-      // Atualiza os dados do usuário no banco
       const [userUpdated] = await trx("users")
         .where("id", id)
         .update(data)
-        .returning("*"); // Retorna o registro atualizado
+        .returning("*");
 
       if (!userUpdated) {
         throw new Error("USER_NOT_FOUND");
@@ -89,18 +104,16 @@ export const updateUser = async ({ params, body }: Request, res: Response) => {
 export const deleteUser = async ({ params }: Request, res: Response) => {
     const { id } = params;
     try {
-        // Inicia uma transação
         const deletedUser = await db.transaction(async (trx) => {
-          // Verifica se o usuário existe
+          
           const userExists = await trx("users").where("id", id).first();
           if (!userExists) {
             throw new Error("USER_NOT_FOUND");
           }
     
-          // Deleta o usuário
           await trx("users").where("id", id).del();
     
-          return userExists; // Retorna o usuário excluído para confirmação
+          return userExists;
         });
     
         return res.status(200).json({ user: deletedUser, message: "USER_DELETED", code: 200 });
