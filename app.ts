@@ -10,7 +10,7 @@ const app = express();
 const port = process.env.PORT || 8080;
 app.use(
     cors({
-      origin: ["http://localhost:5173"], // Alterar para o domínio específico em produção
+      origin: [process.env.CLIENT_URL], // Alterar para o domínio específico em produção
       methods: ["GET", "POST", "PUT", "DELETE"],
       allowedHeaders: ["Content-Type", "Authorization"],
       credentials: true,
