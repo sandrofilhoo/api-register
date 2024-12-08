@@ -29,7 +29,11 @@ Após as migrações, execute os seeds para popular a tabela de usuários com da
 npx knex seed:run
 
 ```
+Para instalar as dependências, execute o comando:
 
+```sh
+npm install
+```
 # Iniciar a aplicação
 Para iniciar a aplicação, utilize o comando:
 
